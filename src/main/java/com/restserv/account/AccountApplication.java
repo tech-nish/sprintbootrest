@@ -14,7 +14,6 @@
 */
 package com.restserv.account;
 //Import of Dependent resources
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -43,15 +42,94 @@ public class AccountApplication {
     public static void main(String[] args) {
         SpringApplication.run(AccountApplication.class, args);
     }
-    //Method to handle the GET request at "/process" URI with orgId & userId as Header parameter
-    @GetMapping(value = "/process")
-    public ResponseEntity getAccountSync(@RequestHeader(value="orgId") String orgId, @RequestHeader(value="userId") String userId) {
+    //Method to handle the GET request at "/getprocess" URI with orgId & userId as Header parameter
+    @GetMapping(value = "/getprocess")
+    public ResponseEntity getAccountSync(@RequestHeader(value="orgId") String org, @RequestHeader(value="userId") String user) {
         try {
-            //Code to Sync Account
+            ObjectMapper mapper = new ObjectMapper();
+            String orgId = mapper.readValue(org, String.class);
+            String userId = mapper.readValue(user, String.class);
+            if ((orgId == null) || (orgId.trim().equals(""))) {//Checking for Valid orgId, should not be blank or null
+                ResponseModal resp = new ResponseModal();
+                resp.status = "error";
+                resp.error = "WEBSERVICE NULL EXCEPTION : orgId is NULL";
+                //Returning Error Response
+                return ResponseEntity.ok(resp);
+            } else if ((userId == null) || (userId.trim().equals(""))) {//userId for Valid userId, should not be blank or null
+                ResponseModal resp = new ResponseModal();
+                resp.status = "error";
+                resp.error = "WEBSERVICE NULL EXCEPTION : userId is NULL";
+                //Returning Error Response
+                return ResponseEntity.ok(resp);
+            }else{
+                List<RequestModal> userAccountList = new ArrayList();
+                //Code to get Account List for Specific User & Org //This have been added to Validate
+                for(RequestModal eachAcc : myAccountList){
+                    if((orgId.equals(eachAcc.getOrgId())) && (userId.equals(eachAcc.getUserId()))){
+                        userAccountList.add(eachAcc);
+                    }
+                }
+
+                if(userAccountList.size() == 0){
+                    ResponseModal resp = new ResponseModal();
+                    resp.status = "error";
+                    resp.error = "No matching record found for mentioned User & Org";
+                    return ResponseEntity.ok(resp);
+                }else{
+                    return ResponseEntity.ok(userAccountList);
+                }
+            }
+        }catch (Exception ex){
             ResponseModal resp = new ResponseModal();
-            resp.status = "success";
-            resp.error = "";
+            resp.status = "error";
+            resp.error = ex.getMessage();
             return ResponseEntity.ok(resp);
+        }
+    }
+    //Method to handle the GET request at "/process" URI with orgId & userId as Header parameter
+    @PostMapping(value = "/process")
+    public ResponseEntity accountSyncProcess(@RequestBody String reqBody) {
+        try {
+            //Converting JSON object to UserModal list to Process
+            ObjectMapper mapper = new ObjectMapper();
+            UserModal reqObj = mapper.readValue(reqBody, UserModal.class);
+            String orgId = reqObj.getOrgId();
+            String userId = reqObj.getUserId();
+            if ((orgId == null) || (orgId.trim().equals(""))) {//Checking for Valid orgId, should not be blank or null
+                ResponseModal resp = new ResponseModal();
+                resp.status = "error";
+                resp.error = "WEBSERVICE NULL EXCEPTION : orgId is NULL";
+                //Returning Error Response
+                return ResponseEntity.ok(resp);
+            } else if ((userId == null) || (userId.trim().equals(""))) {//userId for Valid userId, should not be blank or null
+                ResponseModal resp = new ResponseModal();
+                resp.status = "error";
+                resp.error = "WEBSERVICE NULL EXCEPTION : userId is NULL";
+                //Returning Error Response
+                return ResponseEntity.ok(resp);
+            }else{
+                List<RequestModal> userAccountList = new ArrayList();
+                //Code to get Account List for Specific User & Org //This have been added to Validate
+                for(RequestModal eachAcc : myAccountList){
+                    if((orgId.equals(eachAcc.getOrgId())) && (userId.equals(eachAcc.getUserId()))){
+                        userAccountList.add(eachAcc);
+                    }
+                }
+
+                if(userAccountList.size() == 0){
+                    ResponseModal resp = new ResponseModal();
+                    resp.status = "error";
+                    resp.error = "No matching record found for mentioned User & Org";
+                    return ResponseEntity.ok(resp);
+                }else{
+                    //Code to Sync Account - To MySQL/SQL/Oracle
+                    ResponseModal resp = new ResponseModal();
+                    resp.status = "success";
+                    resp.error = "";
+                    return ResponseEntity.ok(resp);
+                }
+
+            }
         }catch (Exception ex){
             ResponseModal resp = new ResponseModal();
             resp.status = "error";
@@ -61,26 +139,29 @@ public class AccountApplication {
     }
     //Method to handle the POST request at "/batch" URI with orgId, userId & accounts (List of Account with Id, Name, Type properties) as   Header parameter
     @PostMapping(value = "/batch")
-    public ResponseEntity accountBatch(@RequestHeader(value="orgId") String org, @RequestHeader(value="userId") String user, @RequestHeader(value="accounts") String accounts) {
+    public ResponseEntity accountBatch(@RequestBody String reqBody) {
         //Code to add Account
         try {
+            //Converting JSON object to RequestBodyModal list to Process
             ObjectMapper mapper = new ObjectMapper();
-            String orgId = mapper.readValue(org, String.class);
-            String userId = mapper.readValue(user, String.class);
+            RequestBodyModal reqObj = mapper.readValue(reqBody, RequestBodyModal.class);
+            String orgId = reqObj.getOrgId();
+            String userId = reqObj.getUserId();
+            List<AccountModal> accounts = reqObj.getAccounts();
 
-            if ((orgId == null) || (orgId.trim() == "")) {//Checking for Valid orgId, should not be blank or null
+            if ((orgId == null) || (orgId.trim().equals(""))) {//Checking for Valid orgId, should not be blank or null
                 ResponseModal resp = new ResponseModal();
                 resp.status = "error";
                 resp.error = "WEBSERVICE NULL EXCEPTION : orgId is NULL";
                 //Returning Error Response
                 return ResponseEntity.ok(resp);
-            } else if ((userId == null) || (userId.trim() == "")) {//userId for Valid userId, should not be blank or null
+            } else if ((userId == null) || (userId.trim().equals(""))) {//userId for Valid userId, should not be blank or null
                 ResponseModal resp = new ResponseModal();
                 resp.status = "error";
                 resp.error = "WEBSERVICE NULL EXCEPTION : userId is NULL";
                 //Returning Error Response
                 return ResponseEntity.ok(resp);
-            } else if ((accounts == null) || (accounts == "")) {//Checking for Valid accounts, should not be blank or null
+            } else if ((accounts == null) || (accounts.size() == 0)) {//Checking for Valid accounts, should not be blank or null
                 ResponseModal resp = new ResponseModal();
                 resp.status = "error";
                 resp.error = "WEBSERVICE NULL EXCEPTION : accounts is NULL";
@@ -92,22 +173,19 @@ public class AccountApplication {
                 String error = "";
                 Integer count = 0;
 
-                //Converting JSON object to AccountModal list to Process
-                List<AccountModal> accountList = mapper.readValue(accounts, new TypeReference<List<AccountModal>>() {});
-
                 //Processgin AccountModal records to add to Master Account List
-                for (AccountModal eachAccount : accountList) {
-                    if ((userId == null) || (userId.trim() == "") || (userId == null) || (userId.trim() == "") || (userId == null) || (userId.trim() == "")) {
+                for (AccountModal eachAccount : accounts) {
+                    if ((eachAccount.getId() == null) || (eachAccount.getId().trim().equals("")) || (eachAccount.getName() == null) || (eachAccount.getName().trim().equals("")) || (eachAccount.getType() == null) || (eachAccount.getType().trim().equals(""))) {
                         //Checking if any property is blank for Account record
                         if (status.contains("success")) {
                             status = "partial success";
                         } else {
                             status = "error";
                         }
-                        if (error == "") {
-                            error = "Index " + count + ": Account Object is incomplete.";
+                        if (error.equals("")) {
+                            error = "Index " + count + ": Account Information is incomplete.";
                         } else {
-                            error += " Index " + count + ": Account Object is incomplete.";
+                            error += " Index " + count + ": Account Information is incomplete.";
                         }
 
                     } else {
@@ -239,5 +317,65 @@ public class AccountApplication {
         public void setAccount(AccountModal account) {
             this.account = account;
         }
+    }
+    //RequestBodyModal wrapper class to hold orgId, userId & account properties (received from /batch) later to be used for sync (/process)
+    public static class RequestBodyModal {
+
+        private String orgId;
+        private String userId;
+        private List<AccountModal> accounts;
+
+        RequestBodyModal(){
+        }
+
+        public String getOrgId() {
+            return orgId;
+        }
+
+        public String getUserId() {
+            return userId;
+        }
+
+        public List<AccountModal> getAccounts() {
+            return accounts;
+        }
+
+        public void setOrgId(String orgId) {
+            this.orgId = orgId;
+        }
+
+        public void setUserId(String userId) {
+            this.userId = userId;
+        }
+
+        public void setAccounts(List<AccountModal> accounts) {
+            this.accounts = accounts;
+        }
+    }
+    //UserModal wrapper class to hold orgId, userId & account properties (received from /batch) later to be used for sync (/process)
+    public static class UserModal {
+
+        private String orgId;
+        private String userId;
+
+        UserModal(){
+        }
+
+        public String getOrgId() {
+            return orgId;
+        }
+
+        public String getUserId() {
+            return userId;
+        }
+
+        public void setOrgId(String orgId) {
+            this.orgId = orgId;
+        }
+
+        public void setUserId(String userId) {
+            this.userId = userId;
+        }
+
     }
 }
